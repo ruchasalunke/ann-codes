@@ -1,55 +1,33 @@
 import numpy as np
+class FeedForwardNN:
+    def __init__(self, input_size, hidden_size, output_size):
+        self.w1 = np.random.randn(input_size, hidden_size)
+        self.b1 = np.zeros((1, hidden_size))
+        self.w2 = np.random.randn(hidden_size, output_size)
+        self.b2 = np.zeros((1, output_size))
 
-# Input (X: hours sleeping, hours studying), Output (y: test scores)
-X = np.array(([2, 9], [1, 5], [3, 6]), dtype=float)
-y = np.array(([92], [86], [89]), dtype=float)
+    def sigmoid(self, x): return 1 / (1 + np.exp(-x))
+    def sigmoid_deriv(self, x): return x * (1 - x)
 
-# Normalize
-X = X / np.amax(X, axis=0)
-y = y / 100
+    def train(self, X, y, lr=0.1, epochs=10000):
+        for _ in range(epochs):
+            h_in = np.dot(X, self.w1) + self.b1
+            h_out = self.sigmoid(h_in)
+            o_in = np.dot(h_out, self.w2) + self.b2
+            output = self.sigmoid(o_in)
 
-class NeuralNetwork:
-    def _init_(self):
-        self.inputSize = 2
-        self.outputSize = 1
-        self.hiddenSize = 3
-        self.W1 = np.random.randn(self.inputSize, self.hiddenSize)  # (2x3)
-        self.W2 = np.random.randn(self.hiddenSize, self.outputSize)  # (3x1)
-        
-    def sigmoid(self, s, deriv=False):
-        if deriv:
-            return s * (1 - s)
-        return 1 / (1 + np.exp(-s))
-    
-    def feedForward(self, X):
-        self.z = np.dot(X, self.W1)
-        self.z2 = self.sigmoid(self.z)
-        self.z3 = np.dot(self.z2, self.W2)
-        output = self.sigmoid(self.z3)
+            error = y - output
+            d_output = error * self.sigmoid_deriv(output)
+            d_hidden = d_output.dot(self.w2.T) * self.sigmoid_deriv(h_out)
+
+            self.w2 += h_out.T.dot(d_output) * lr
+            self.b2 += np.sum(d_output, axis=0, keepdims=True) * lr
+            self.w1 += X.T.dot(d_hidden) * lr
+            self.b1 += np.sum(d_hidden, axis=0, keepdims=True) * lr
         return output
-    
-    def backward(self, X, y, output, learning_rate=0.1):
-        self.output_error = y - output
-        self.output_delta = self.output_error * self.sigmoid(output, deriv=True)
-        
-        self.z2_error = self.output_delta.dot(self.W2.T)
-        self.z2_delta = self.z2_error * self.sigmoid(self.z2, deriv=True)
-        
-        self.W1 += learning_rate * X.T.dot(self.z2_delta)
-        self.W2 += learning_rate * self.z2.T.dot(self.output_delta)
-    
-    def train(self, X, y):
-        output = self.feedForward(X)
-        self.backward(X, y, output)
 
-NN = NeuralNetwork()
-
-for i in range(1000):
-    if i % 100 == 0:
-        print(f"Loss after {i} iterations: {np.mean(np.square(y - NN.feedForward(X)))}")
-    NN.train(X, y)
-
-print("\nInput:\n", X)
-print("Actual Output:\n", y)
-print("Predicted Output:\n", NN.feedForward(X))
-print("Final Loss:", np.mean(np.square(y - NN.feedForward(X))))
+X = np.array([[0,0],[0,1],[1,0],[1,1]])
+y = np.array([[0],[1],[1],[0]])
+nn = FeedForwardNN(2, 2, 1)
+output = nn.train(X, y)
+print("Output:\n", output.round())
